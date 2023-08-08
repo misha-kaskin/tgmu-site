@@ -58,7 +58,8 @@ export class App extends React.Component {
                     isEdited: false,
                     isEditing: false,
                     editedVar: title.title,
-                    files: title.files,
+                    files: title.files.map(el => { return { name: el, isAdded: false, isDeleted: false, data: {} } }),
+                    fileNames: title.files,
                     flag: false
                   });
                 }
@@ -68,9 +69,6 @@ export class App extends React.Component {
         }
       }
     }
-
-
-    // console.log(flagMap);
 
     return flagMap;
   }
@@ -113,8 +111,6 @@ export class App extends React.Component {
         }
       }
     }
-
-    // console.log(newMap);
 
     return newMap;
   }
@@ -193,7 +189,6 @@ export class App extends React.Component {
     e.preventDefault();
   }
 
-
   handleAddModule = (subj, moduleNum) => {
     const moduleMap = new Map();
     subj.set(moduleNum.toString() + ' модуль', {
@@ -233,7 +228,8 @@ export class App extends React.Component {
         isEdited: false,
         isEditing: false,
         editedVar: title,
-        files: []
+        files: [],
+        fileNames: []
       });
       const newMap = new Map(this.state.flags);
       this.setState({ flags: newMap });
@@ -286,7 +282,6 @@ export class App extends React.Component {
     this.setState({ flags: newMap });
   }
 
-
   handleCancelDeleteTitle = (title) => {
     title.isDeleted = false;
 
@@ -294,14 +289,12 @@ export class App extends React.Component {
     this.setState({ flags: newMap });
   }
 
-
   handleDeleteModule = (mod) => {
     mod.isDeleted = true;
 
     const newMap = new Map(this.state.flags);
     this.setState({ flags: newMap });
   }
-
 
   handleCancelDeleteModule = (mod) => {
     mod.isDeleted = false;
@@ -400,24 +393,39 @@ export class App extends React.Component {
     }
   }
 
+  contains(a, obj) {
+    var i = a.filter(() => { return true; }).length;
+    while (i--) {
+      if (a[i] === obj) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   handleDropFile = (e, title) => {
     e.preventDefault();
     let files = [...e.dataTransfer.files];
     let currentFiles = title.files;
     title.flag = true;
 
+    console.log(title.files);
+
     for (let file of files) {
-      currentFiles.push(file);
+      if (!this.contains(title.fileNames, file.name)) {
+        let el = { name: file.name, isAdded: true, isDeleted: false, data: file };
+        currentFiles.push(el);
+        title.fileNames.push(file.name);
+      }
+
     }
 
     const newMap = new Map(this.state.flags);
     this.setState({ flags: newMap });
   }
 
-  handleDeleteFile = (title, idx) => {
-    let currentFiles = title.files;
-    let files = currentFiles.filter((el, index) => idx != index);
-    title.files = files;
+  handleDeleteFile = (el) => {
+    el.isDeleted = true;
 
     const newMap = new Map(this.state.flags);
     this.setState({ flags: newMap });
@@ -436,7 +444,6 @@ export class App extends React.Component {
 
     return result;
   }
-
 
   sendFile = () => {
     const formData = new FormData();
@@ -463,7 +470,6 @@ export class App extends React.Component {
       alert("Error submitting form!");
     });
   }
-
 
   render() {
     return (
@@ -645,6 +651,7 @@ export class App extends React.Component {
                                                     {!this.checkTitles(lect[1].data) && <button onClick={() => this.handleDeleteTitle(title)}>Х</button>}
 
                                                     {!this.checkTitles(lect[1].data) && <button onClick={() => this.handleEditTitleByButton(title)}>R</button>}
+                                                    
                                                     {title.flag && <ul style={{ listStyleType: "none" }}>
                                                       {title.files.map((el, idx) =>
                                                         <li>
@@ -652,9 +659,10 @@ export class App extends React.Component {
                                                             display: "flex",
                                                             alignItems: "center"
                                                           }}>
-                                                            <img height="32px" src="https://clck.ru/353YQL" />
-                                                            {el.name}
-                                                            <button onClick={() => this.handleDeleteFile(title, idx)}>X</button>
+                                                            {!el.isDeleted && <span><img height="32px" src="https://clck.ru/353YQL" />
+                                                              {el.name}
+                                                              <button onClick={() => this.handleDeleteFile(el)}>X</button> </span>}
+                                                            {el.isDeleted && <button onClick={() => this.handleCancelDeleteModule(el)}>Восстановить</button>}
                                                           </div>
                                                         </li>)}
                                                     </ul>}
