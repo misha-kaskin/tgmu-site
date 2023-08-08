@@ -4,29 +4,7 @@ import React from "react";
 export class App extends React.Component {
   state = {};
 
-  constructor(props) {
-    super(props);
-
-    const lectMap = new Map([['Лекция', [
-      { title: "Математика", files: [] },
-      { title: "Физика", files: [] },
-      { title: "Компьтер сайнс", files: [] }
-    ]]]);
-    const modMap = new Map([['1 модуль', lectMap]]);
-    const subjectMap = new Map([['Анатомия', modMap]]);
-    const semMap = new Map([['1 семестр', subjectMap]]);
-    const courseMap = new Map([['1 курс', semMap]]);
-    const newMap = new Map([['Лечебный факультет', courseMap]]);
-
-    let tmp = newMap.get('Лечебный факультет');
-    tmp = tmp.get('1 курс').set('2 семестр', new Map());
-    tmp = tmp.get('2 семестр').set('Анатомия', new Map());
-    tmp = tmp.get('Анатомия').set('1 модуль', new Map());
-    tmp = tmp.get('1 модуль').set('Лекция', [
-      { title: "Медицина", files: [] },
-      { title: "Колдунство", files: [] }
-    ]);
-
+  parseData(newMap) {
     const flagMap = new Map();
 
     for (let facultyKey of newMap.keys()) {
@@ -91,15 +69,77 @@ export class App extends React.Component {
       }
     }
 
-    console.log(flagMap);
 
-    this.state = {
-      courses: [2, 3, 4, 5, 6],
+    // console.log(flagMap);
 
-      dataMap: newMap,
-      flags: flagMap,
-      files: []
-    };
+    return flagMap;
+  }
+
+  parseJsonMap(mapData) {
+    let newMap = new Map();
+
+    let faculties = Object.keys(mapData);
+
+    for (let faculty of faculties) {
+      let courseMap = new Map();
+      newMap.set(faculty, courseMap);
+      let courses = Object.keys(mapData[faculty]);
+
+      for (let course of courses) {
+        let semMap = new Map();
+        courseMap.set(course, semMap);
+        let semesters = Object.keys(mapData[faculty][course]);
+
+        for (let sem of semesters) {
+          let subjMap = new Map();
+          semMap.set(sem, subjMap);
+          let subjects = Object.keys(mapData[faculty][course][sem]);
+
+          for (let subj of subjects) {
+            let modMap = new Map();
+            subjMap.set(subj, modMap);
+            let modules = Object.keys(mapData[faculty][course][sem][subj]);
+
+            for (let mod of modules) {
+              let typeMap = new Map();
+              modMap.set(mod, typeMap);
+              let types = Object.keys(mapData[faculty][course][sem][subj][mod]);
+
+              for (let type of types) {
+                typeMap.set(type, mapData[faculty][course][sem][subj][mod][type]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // console.log(newMap);
+
+    return newMap;
+  }
+
+  componentDidMount() {
+    fetch('http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция')
+      .then(response => response.json())
+      .then(data => this.setState({
+        dataMap: this.parseJsonMap(data),
+        flags: this.parseData(this.parseJsonMap(data)),
+        files: [],
+        courses: [2, 3, 4, 5, 6]
+      }));
+  }
+
+  constructor(props) {
+    super(props);
+
+    let flags = new Map();
+    let courses = new Map();
+
+    flags.set('Лечебный факультет', courses);
+    courses.set('1 курс', courses);
+
+    this.state = { dataMap: new Map(), flags: flags, files: [], courses: [2, 3, 4, 5, 6] };
   }
 
   checkModules(modMap) {
@@ -132,10 +172,10 @@ export class App extends React.Component {
   handleDrop = (e) => {
     e.preventDefault();
     let files = [...e.dataTransfer.files];
-    let fileTitles = files.map(el => el.name);
+    // let fileTitles = files.map(el => el.name);
     let currentFiles = [...this.state.files];
 
-    for (let file of fileTitles) {
+    for (let file of files) {
       currentFiles.push(file);
     }
 
@@ -398,6 +438,33 @@ export class App extends React.Component {
   }
 
 
+  sendFile = () => {
+    const formData = new FormData();
+
+    this.state.files.forEach(el => {
+      formData.append("Лечебный факультет/1 курс/1 семестр/Анатомия/1 модуль/Лекция/Математика/", el);
+    });
+
+    fetch("http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция", {
+      mode: 'no-cors',
+      method: "POST",
+      body: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+
+    }).then(function (res) {
+      if (res.ok) {
+        alert("Perfect! ");
+      } else if (res.status == 401) {
+        alert("Oops! ");
+      }
+    }, function (e) {
+      alert("Error submitting form!");
+    });
+  }
+
+
   render() {
     return (
 
@@ -505,7 +572,7 @@ export class App extends React.Component {
           }}>
             <div style={{ width: "100%" }}>
               <ul>
-                {[...this.state.flags.get('Лечебный факультет').get('1 курс').entries()].map(sem =>
+                {[...this.state.flags.get("Лечебный факультет").get("1 курс").entries()].map(sem =>
                   <li>
                     <span onClick={() => this.someHandler(sem[1])}>
                       {sem[0]}
@@ -659,7 +726,7 @@ export class App extends React.Component {
                         alignItems: "center",
                         width: "100%"
                       }}>
-                        <img height="32px" src="https://clck.ru/353YQL" />{el}
+                        <img height="32px" src="https://clck.ru/353YQL" />{el.name}
                         <button style={{ backgroundColor: "transparent", borderColor: "transparent" }} onClick={() => this.deleteFileHanlder(idx)}>
                           <img src="https://clck.ru/353YcR" height="12px"></img>
                         </button>
@@ -667,7 +734,7 @@ export class App extends React.Component {
                     </li>)}
                   </ul>
                 </li>
-                <li>задачи</li>
+                <li>задачи<button onClick={() => this.sendFile()}>отправить</button></li>
               </ul>
             </div>
             <div style={{ width: "100%" }}></div>
