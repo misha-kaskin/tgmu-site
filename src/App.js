@@ -265,7 +265,7 @@ export class App extends React.Component {
       });
 
       const modMap = new Map();
-      subjMap.set('1 модуль', { flag: false, data: modMap });
+      subjMap.set('1 модуль', { flag: false, data: modMap, isAdded: true, isDeleted: false });
 
       modMap.set('Лекция', { flag: false, data: [] })
       modMap.set('Семинар', { flag: false, data: [] });
@@ -459,7 +459,6 @@ export class App extends React.Component {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
-
     }).then(function (res) {
       if (res.ok) {
         alert("Perfect! ");
@@ -469,6 +468,123 @@ export class App extends React.Component {
     }, function (e) {
       alert("Error submitting form!");
     });
+  }
+
+  sendData = () => {
+    let mapData = this.state.flags;
+
+    let addSubj = [];
+    let addMod = [];
+    let addTitle = [];
+    let addFiles = new FormData();
+
+    let delSubj = [];
+    let delMod = [];
+    let delTitle = [];
+    let delFiles = [];
+
+    for (let faculty of mapData.entries()) {
+      let str1 = faculty[0];
+
+      for (let course of faculty[1].entries()) {
+        let str2 = str1 + "/" + course[0];
+
+        for (let subj of course[1].entries()) {
+          let str3 = str2 + "/" + subj[0];
+
+          for (let mod of subj[1].data.entries()) {
+            let str4 = str3 + "/" + mod[0];
+
+            if (mod[1].isAdded && !mod[1].isDeleted) {
+              addSubj.push(str4);
+            }
+
+            if (mod[1].isDeleted && !mod[1].isAdded) {
+              delSubj.push(str4);
+            }
+            // mod.isAdded;
+            // mod.isDeleted;
+            // mod.isEdited;
+            // mod.editedVar;
+
+            for (let type of mod[1].data.entries()) {
+              let str5 = str4 + "/" + type[0];
+
+              if (type[1].isAdded && !type[1].isDeleted) {
+                addMod.push(str5);
+              }
+
+              if (type[1].isDeleted && !type[1].isAdded) {
+                delMod.push(str5);
+              }
+              // type.isAdded;
+              // type.isDeleted;
+
+              for (let title of type[1].data) {
+                let str6 = str5 + "/" + title[0];
+
+                for (let file of title[1].data) {
+                  let str7 = str6 + "/" + file.var;
+
+                  if (file.isAdded && !file.isDeleted) {
+                    addTitle.push(str7);
+                  }
+
+                  if (file.isDeleted && !file.isAdded) {
+                    delTitle.push(str7);
+                  }
+                  // file.isAdded;
+                  // file.isDeleted;
+                  // file.isEdited;
+                  // file.editedVar;
+
+                  for (let info of file.files) {
+                    let str8 = str7 + "/" + info.name;
+
+                    if (info.isAdded && !info.isDeleted) {
+                      addFiles.append(str7 + "/", info.data);
+                    }
+
+                    if (info.isDeleted && !info.isAdded) {
+                      delFiles.push(str8);
+                    }
+                    // info.isAdded;
+                    // info.isDeleted;
+                    // info.data;
+                    // info.name;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    console.log(addSubj);
+    console.log(addMod);
+    console.log(addTitle);
+
+    fetch("http://localhost:8080/subject", {
+      mode: 'no-cors', method: "POST", body: JSON.stringify(addSubj)
+    })
+
+    // fetch("http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция", {
+    //   mode: 'no-cors',
+    //   method: "POST",
+    //   body: addFiles,
+    //   headers: {
+    //     'Content-Type': 'multipart/form-data'
+    //   }
+    // }).then(function (res) {
+    //   if (res.ok) {
+    //     alert("Perfect! ");
+    //   } else if (res.status == 401) {
+    //     alert("Oops! ");
+    //   }
+    // }, function (e) {
+    //   alert("Error submitting form!");
+    // });
   }
 
   render() {
@@ -565,6 +681,13 @@ export class App extends React.Component {
             }}>
               Ординатура
             </div>
+
+            <div style={{
+              border: "1px solid black",
+              width: "100%"
+            }}>
+              <button onClick={() => this.sendData()}>Сохранить</button>
+            </div>
           </div>
           <div style={{ border: "1px solid black" }}>
             Нажать чтобы открылась строка
@@ -651,7 +774,7 @@ export class App extends React.Component {
                                                     {!this.checkTitles(lect[1].data) && <button onClick={() => this.handleDeleteTitle(title)}>Х</button>}
 
                                                     {!this.checkTitles(lect[1].data) && <button onClick={() => this.handleEditTitleByButton(title)}>R</button>}
-                                                    
+
                                                     {title.flag && <ul style={{ listStyleType: "none" }}>
                                                       {title.files.map((el, idx) =>
                                                         <li>
