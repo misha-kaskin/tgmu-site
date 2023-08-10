@@ -510,18 +510,26 @@ export class App extends React.Component {
             for (let type of mod[1].data.entries()) {
               let str5 = str4 + "/" + type[0];
 
-              if (type[1].isAdded && !type[1].isDeleted) {
-                addMod.push(str5);
-              }
+              // if (type[1].isAdded && !type[1].isDeleted) {
+              //   addMod.push(str5);
+              // }
 
-              if (type[1].isDeleted && !type[1].isAdded) {
-                delMod.push(str5);
-              }
+              // if (type[1].isDeleted && !type[1].isAdded) {
+              //   delMod.push(str5);
+              // }
               // type.isAdded;
               // type.isDeleted;
 
               for (let title of type[1].data) {
                 let str6 = str5 + "/" + title[0];
+
+                if (type[1].isAdded && !type[1].isDeleted) {
+                  addMod.push(str6);
+                }
+
+                if (type[1].isDeleted && !type[1].isAdded) {
+                  delMod.push(str6);
+                }
 
                 for (let file of title[1].data) {
                   let str7 = str6 + "/" + file.var;
@@ -567,7 +575,23 @@ export class App extends React.Component {
 
     fetch("http://localhost:8080/subject", {
       mode: 'no-cors', method: "POST", body: JSON.stringify(addSubj)
-    })
+    }).then(fetch("http://localhost:8080/module", {
+      mode: 'no-cors', method: "POST", body: JSON.stringify(addMod)
+    })).then(fetch("http://localhost:8080/title", {
+      mode: 'no-cors', method: "POST", body: JSON.stringify(addTitle)
+    })).then(fetch("http://localhost:8080/file", {
+      mode: 'no-cors', method: "POST", body: addFiles
+    }));
+
+    fetch("http://localhost:8080/file", {
+      mode: 'cors', method: "DELETE", body: JSON.stringify(delFiles)
+    }).then(fetch("http://localhost:8080/title", {
+      mode: 'cors', method: "DELETE", body: JSON.stringify(delTitle)
+    })).then(fetch("http://localhost:8080/module", {
+      mode: 'cors', method: "DELETE", body: JSON.stringify(delMod)
+    })).then(fetch("http://localhost:8080/subject", {
+      mode: 'cors', method: "DELETE", body: JSON.stringify(delSubj)
+    }));
 
     // fetch("http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция", {
     //   mode: 'no-cors',
