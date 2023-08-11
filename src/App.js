@@ -135,7 +135,7 @@ export class App extends React.Component {
     flags.set('Лечебный факультет', courses);
     courses.set('1 курс', courses);
 
-    this.state = { dataMap: new Map(), flags: flags, files: [], courses: [2, 3, 4, 5, 6] };
+    this.state = { dataMap: new Map(), flags: flags, files: [], courses: [2, 3, 4, 5, 6], buttonIsActive: true, course: "1 курс", faculty: "Лечебный факультет" };
   }
 
   checkModules(modMap) {
@@ -219,8 +219,16 @@ export class App extends React.Component {
     const title = e.target.value;
     e.target.value = "";
 
+    let flag = true;
 
-    if (!(!title || /^\s*$/.test(title))) {
+    for (let el of lect.data) {
+      if (el.editedVar === title) {
+        flag = false;
+        break;
+      }
+    }
+
+    if (!(!title || /^\s*$/.test(title)) && flag) {
       lect.data.push({
         isDeleted: false,
         isAdded: true,
@@ -323,11 +331,20 @@ export class App extends React.Component {
     this.setState({ flags: newMap });
   }
 
-  handleEditTitle = (e, title) => {
+  handleEditTitle = (e, title, lect) => {
     const str = e.target.value;
     e.target.value = "";
 
-    if (!(!str || /^\s*$/.test(str))) {
+    let flag = true;
+
+    for (let el of lect.data) {
+      if (el.editedVar === str) {
+        flag = false;
+        break;
+      }
+    }
+
+    if (!(!str || /^\s*$/.test(str)) && flag) {
       if (title.var === str) {
         title.isEdited = false;
 
@@ -471,6 +488,8 @@ export class App extends React.Component {
   }
 
   sendData = () => {
+    this.setState({ buttonIsActive: false });
+
     let mapData = this.state.flags;
 
     let addSubj = [];
@@ -482,6 +501,9 @@ export class App extends React.Component {
     let delMod = [];
     let delTitle = [];
     let delFiles = [];
+
+    let editedMod = [];
+    let editedTitle = [];
 
     for (let faculty of mapData.entries()) {
       let str1 = faculty[0];
@@ -496,11 +518,23 @@ export class App extends React.Component {
             let str4 = str3 + "/" + mod[0];
 
             if (mod[1].isAdded && !mod[1].isDeleted) {
-              addSubj.push(str4);
+              if (mod[1].isEdited) {
+                addSubj.push(str3 + "/" + mod[1].editedVar);
+              } else {
+                addSubj.push(str4);
+              }
             }
 
             if (mod[1].isDeleted && !mod[1].isAdded) {
               delSubj.push(str4);
+            }
+
+            if (mod[1].isEdited && !mod[1].isAdded && !mod[1].isDeleted) {
+              editedMod.push(str4 + "|" + mod[1].editedVar);
+            }
+
+            if (mod[1].isDeleted) {
+              continue;
             }
             // mod.isAdded;
             // mod.isDeleted;
@@ -531,15 +565,31 @@ export class App extends React.Component {
                   delMod.push(str6);
                 }
 
+                if (type[1].isDeleted) {
+                  continue;
+                }
+
                 for (let file of title[1].data) {
                   let str7 = str6 + "/" + file.var;
 
                   if (file.isAdded && !file.isDeleted) {
-                    addTitle.push(str7);
+                    if (file.isEdited) {
+                      addTitle.push(str6 + "/" + file.editedVar);
+                    } else {
+                      addTitle.push(str7);
+                    }
                   }
 
                   if (file.isDeleted && !file.isAdded) {
                     delTitle.push(str7);
+                  }
+
+                  if (file.isEdited && !file.isAdded && !file.isDeleted) {
+                    editedTitle.push(str7 + "|" + file.editedVar);
+                  }
+
+                  if (file.isDeleted) {
+                    continue;
                   }
                   // file.isAdded;
                   // file.isDeleted;
@@ -572,26 +622,35 @@ export class App extends React.Component {
     console.log(addSubj);
     console.log(addMod);
     console.log(addTitle);
+    console.log(addFiles);
 
     fetch("http://localhost:8080/subject", {
       mode: 'no-cors', method: "POST", body: JSON.stringify(addSubj)
-    }).then(fetch("http://localhost:8080/module", {
+    }).then(() => fetch("http://localhost:8080/module", {
       mode: 'no-cors', method: "POST", body: JSON.stringify(addMod)
-    })).then(fetch("http://localhost:8080/title", {
+    })).then(() => fetch("http://localhost:8080/title", {
       mode: 'no-cors', method: "POST", body: JSON.stringify(addTitle)
-    })).then(fetch("http://localhost:8080/file", {
+    })).then(() => fetch("http://localhost:8080/file", {
       mode: 'no-cors', method: "POST", body: addFiles
-    }));
-
-    fetch("http://localhost:8080/file", {
+    })).then(() => fetch("http://localhost:8080/file", {
       mode: 'cors', method: "DELETE", body: JSON.stringify(delFiles)
-    }).then(fetch("http://localhost:8080/title", {
+    })).then(() => fetch("http://localhost:8080/title", {
       mode: 'cors', method: "DELETE", body: JSON.stringify(delTitle)
-    })).then(fetch("http://localhost:8080/module", {
+    })).then(() => fetch("http://localhost:8080/module", {
       mode: 'cors', method: "DELETE", body: JSON.stringify(delMod)
-    })).then(fetch("http://localhost:8080/subject", {
+    })).then(() => fetch("http://localhost:8080/subject", {
       mode: 'cors', method: "DELETE", body: JSON.stringify(delSubj)
-    }));
+    })).then(() => fetch("http://localhost:8080/title", {
+      mod: 'cors', method: "PUT", body: JSON.stringify(editedTitle)
+    })).then(() => fetch("http://localhost:8080/subject", {
+      mode: 'cors', method: "PUT", body: JSON.stringify(editedMod)
+    })).then(() => fetch('http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция'))
+      .then(response => response.json())
+      .then(data => this.setState({
+        dataMap: this.parseJsonMap(data),
+        flags: this.parseMapByOldFlags(this.parseJsonMap(data)),
+        buttonIsActive: true
+      }));
 
     // fetch("http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция", {
     //   mode: 'no-cors',
@@ -609,6 +668,83 @@ export class App extends React.Component {
     // }, function (e) {
     //   alert("Error submitting form!");
     // });
+  }
+
+  parseMapByOldFlags(newMap) {
+    const flagMap = new Map();
+    const oldMap = this.state.flags;
+
+    for (let facultyKey of newMap.keys()) {
+      let varFaculty = newMap.get(facultyKey);
+      let mapFaculty = new Map();
+      flagMap.set(facultyKey, mapFaculty);
+
+      for (let courseKey of varFaculty.keys()) {
+        let varCourse = varFaculty.get(courseKey);
+        let mapCourse = new Map();
+        mapFaculty.set(courseKey, mapCourse);
+
+        for (let semKey of varCourse.keys()) {
+          let varSem = varCourse.get(semKey);
+          let mapSem = new Map();
+          let flag1 = oldMap.get(facultyKey).get(courseKey).get(semKey).flag;
+          mapCourse.set(semKey, { flag: flag1, data: mapSem });
+
+          for (let subjKey of varSem.keys()) {
+            let varSubj = varSem.get(subjKey);
+            let mapSubj = new Map();
+            let flag2 = oldMap.get(facultyKey).get(courseKey).get(semKey).data.get(subjKey).flag;
+            mapSem.set(subjKey, {
+              flag: flag2,
+              isAdded: false,
+              isDeleted: false,
+              sourceVar: subjKey,
+              isEdited: false,
+              isEdititing: false,
+              editedVar: subjKey,
+              data: mapSubj
+            });
+
+            for (let modKey of varSubj.keys()) {
+              let varMod = varSubj.get(modKey);
+              let mapMod = new Map();
+              let flag3 = oldMap.get(facultyKey).get(courseKey).get(semKey).data.get(subjKey).data.get(modKey).flag;
+              mapSubj.set(modKey, {
+                flag: flag3,
+                isAdded: false,
+                isDeleted: false,
+                data: mapMod
+              });
+
+              for (let lectKey of varMod.keys()) {
+                let titles = [];
+                let flag4 = oldMap.get(facultyKey).get(courseKey).get(semKey).data.get(subjKey).data.get(modKey).data.get(lectKey).flag;
+                mapMod.set(lectKey, { flag: flag4, data: titles });
+
+                let i = 0;
+
+                for (let title of varMod.get(lectKey)) {
+                  let flag5 = oldMap.get(facultyKey).get(courseKey).get(semKey).data.get(subjKey).data.get(modKey).data.get(lectKey).data[i++].flag;
+                  titles.push({
+                    isAdded: false,
+                    isDeleted: false,
+                    var: title.title,
+                    isEdited: false,
+                    isEditing: false,
+                    editedVar: title.title,
+                    files: title.files.map(el => { return { name: el, isAdded: false, isDeleted: false, data: {} } }),
+                    fileNames: title.files,
+                    flag: flag5
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return flagMap;
   }
 
   render() {
@@ -633,11 +769,11 @@ export class App extends React.Component {
           </div>
           <div>
             <ul>
-              <li>Лечебный &gt;</li>
-              <li>Стоматологический &gt;</li>
-              <li>Педиатрический &gt;</li>
-              <li>Фармацевтический &gt;</li>
-              <li>Клин. психология &gt;</li>
+              <li onClick={() => { this.setState({ faculty: "Лечебный факультет" }) }}>Лечебный &gt;</li>
+              <li onClick={() => { this.setState({ faculty: "Стоматологический факультет" }) }}>Стоматологический &gt;</li>
+              <li onClick={() => { this.setState({ faculty: "Педиатрический факультет" }) }}>Педиатрический &gt;</li>
+              <li onClick={() => { this.setState({ faculty: "Фармацевтический факультет" }) }}>Фармацевтический &gt;</li>
+              <li onClick={() => { this.setState({ faculty: "Клин. психология факультет" }) }}>Клин. психология &gt;</li>
             </ul>
           </div>
         </div>
@@ -660,37 +796,37 @@ export class App extends React.Component {
             <div style={{
               border: "1px solid black"
               , width: "100%"
-            }}>
+            }} onClick={() => { this.setState({ course: "1 курс" }) }}>
               1 курс
             </div>
             <div style={{
               border: "1px solid black",
               width: "100%"
-            }}>
+            }} onClick={() => { this.setState({ course: "2 курс" }) }}>
               2 курс
             </div>
             <div style={{
               border: "1px solid black",
               width: "100%"
-            }}>
+            }} onClick={() => { this.setState({ course: "3 курс" }) }}>
               3 курс
             </div>
             <div style={{
               border: "1px solid black",
               width: "100%"
-            }}>
+            }} onClick={() => { this.setState({ course: "4 курс" }) }}>
               4 курс
             </div>
             <div style={{
               border: "1px solid black",
               width: "100%"
-            }}>
+            }} onClick={() => { this.setState({ course: "5 курс" }) }}>
               5 курс
             </div>
             <div style={{
               border: "1px solid black",
               width: "100%"
-            }}>
+            }} onClick={() => { this.setState({ course: "6 курс" }) }}>
               6 курс
             </div>
             <div style={{
@@ -710,7 +846,8 @@ export class App extends React.Component {
               border: "1px solid black",
               width: "100%"
             }}>
-              <button onClick={() => this.sendData()}>Сохранить</button>
+              {this.state.buttonIsActive && <button onClick={() => this.sendData()}>Сохранить</button>}
+              {!this.state.buttonIsActive && <button disabled> Сохранить </button>}
             </div>
           </div>
           <div style={{ border: "1px solid black" }}>
@@ -725,7 +862,7 @@ export class App extends React.Component {
           }}>
             <div style={{ width: "100%" }}>
               <ul>
-                {[...this.state.flags.get("Лечебный факультет").get("1 курс").entries()].map(sem =>
+                {[...this.state.flags.get(this.state.faculty).get(this.state.course).entries()].map(sem =>
                   <li>
                     <span onClick={() => this.someHandler(sem[1])}>
                       {sem[0]}
@@ -817,7 +954,7 @@ export class App extends React.Component {
 
                                                 {(!title.isDeleted && title.isEditing) &&
                                                   <span>
-                                                    <input onBlur={(e) => this.handleEditTitle(e, title)}
+                                                    <input onBlur={(e) => this.handleEditTitle(e, title, lect[1])}
                                                       placeholder={title.editedVar}
                                                       autoFocus
                                                       onKeyDown={(e) => this.handleEditTitleByKey(e)}></input>
