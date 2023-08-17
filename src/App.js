@@ -116,14 +116,16 @@ export class App extends React.Component {
   }
 
   componentDidMount() {
-    fetch('http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция')
+    fetch('http://185.250.44.39:8081/data')
       .then(response => response.json())
-      .then(data => this.setState({
-        dataMap: this.parseJsonMap(data),
-        flags: this.parseData(this.parseJsonMap(data)),
-        files: [],
-        courses: [2, 3, 4, 5, 6]
-      }));
+      .then(data => {
+        console.log(data); this.setState({
+          dataMap: this.parseJsonMap(data),
+          flags: this.parseData(this.parseJsonMap(data)),
+          files: [],
+          courses: [2, 3, 4, 5, 6]
+        })
+      });
   }
 
   constructor(props) {
@@ -465,17 +467,16 @@ export class App extends React.Component {
   sendFile = () => {
     const formData = new FormData();
 
+    console.log(this.state.files);
+
     this.state.files.forEach(el => {
-      formData.append("Лечебный факультет/1 курс/1 семестр/Анатомия/1 модуль/Лекция/Математика/", el);
+      formData.append("file", el, "Лечебный факультет/" + el.name);
     });
 
-    fetch("http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция", {
+    fetch("http://localhost:8080/file", {
       mode: 'no-cors',
       method: "POST",
-      body: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+      body: formData
     }).then(function (res) {
       if (res.ok) {
         alert("Perfect! ");
@@ -600,7 +601,7 @@ export class App extends React.Component {
                     let str8 = str7 + "/" + info.name;
 
                     if (info.isAdded && !info.isDeleted) {
-                      addFiles.append(str7 + "/", info.data);
+                      addFiles.append("file", info.data, str8);
                     }
 
                     if (info.isDeleted && !info.isAdded) {
@@ -624,50 +625,48 @@ export class App extends React.Component {
     console.log(addTitle);
     console.log(addFiles);
 
-    fetch("http://localhost:8080/subject", {
-      mode: 'no-cors', method: "POST", body: JSON.stringify(addSubj)
-    }).then(() => fetch("http://localhost:8080/module", {
-      mode: 'no-cors', method: "POST", body: JSON.stringify(addMod)
-    })).then(() => fetch("http://localhost:8080/title", {
-      mode: 'no-cors', method: "POST", body: JSON.stringify(addTitle)
-    })).then(() => fetch("http://localhost:8080/file", {
-      mode: 'no-cors', method: "POST", body: addFiles
-    })).then(() => fetch("http://localhost:8080/file", {
-      mode: 'cors', method: "DELETE", body: JSON.stringify(delFiles)
-    })).then(() => fetch("http://localhost:8080/title", {
-      mode: 'cors', method: "DELETE", body: JSON.stringify(delTitle)
-    })).then(() => fetch("http://localhost:8080/module", {
-      mode: 'cors', method: "DELETE", body: JSON.stringify(delMod)
-    })).then(() => fetch("http://localhost:8080/subject", {
-      mode: 'cors', method: "DELETE", body: JSON.stringify(delSubj)
-    })).then(() => fetch("http://localhost:8080/title", {
-      mod: 'cors', method: "PUT", body: JSON.stringify(editedTitle)
-    })).then(() => fetch("http://localhost:8080/subject", {
-      mode: 'cors', method: "PUT", body: JSON.stringify(editedMod)
-    })).then(() => fetch('http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция'))
+    // fetch("http://localhost:8080/subject", {
+    //   method: "POST",
+    //   headers: {
+    //     "Accept": "application/json",
+    //     "Content-Type": "application/json"
+    //   },
+    //   body: JSON.stringify("fasfsaff")
+    // });
+
+    let head = {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    };
+
+
+    fetch("http://185.250.44.39:8081/subject", {
+      headers: head, method: "POST", body: JSON.stringify(addSubj)
+    }).then(() => fetch("http://185.250.44.39:8081/module", {
+      headers: head, method: "POST", body: JSON.stringify(addMod)
+    })).then(() => fetch("http://185.250.44.39:8081/title", {
+      headers: head, method: "POST", body: JSON.stringify(addTitle)
+    })).then(() => fetch("http://185.250.44.39:8081/file", {
+      method: "POST", body: addFiles
+    })).then(() => fetch("http://185.250.44.39:8081/file", {
+      headers: head, method: "DELETE", body: JSON.stringify(delFiles)
+    })).then(() => fetch("http://185.250.44.39:8081/title", {
+      headers: head, method: "DELETE", body: JSON.stringify(delTitle)
+    })).then(() => fetch("http://185.250.44.39:8081/module", {
+      headers: head, method: "DELETE", body: JSON.stringify(delMod)
+    })).then(() => fetch("http://185.250.44.39:8081/subject", {
+      headers: head, method: "DELETE", body: JSON.stringify(delSubj)
+    })).then(() => fetch("http://185.250.44.39:8081/title", {
+      headers: head, method: "PUT", body: JSON.stringify(editedTitle)
+    })).then(() => fetch("http://185.250.44.39:8081/subject", {
+      headers: head, method: "PUT", body: JSON.stringify(editedMod)
+    })).then(() => fetch('http://185.250.44.39:8081/data'))
       .then(response => response.json())
       .then(data => this.setState({
         dataMap: this.parseJsonMap(data),
         flags: this.parseMapByOldFlags(this.parseJsonMap(data)),
         buttonIsActive: true
       }));
-
-    // fetch("http://localhost:8080/data/Лечебный факультет/1/1/1/Лекция", {
-    //   mode: 'no-cors',
-    //   method: "POST",
-    //   body: addFiles,
-    //   headers: {
-    //     'Content-Type': 'multipart/form-data'
-    //   }
-    // }).then(function (res) {
-    //   if (res.ok) {
-    //     alert("Perfect! ");
-    //   } else if (res.status == 401) {
-    //     alert("Oops! ");
-    //   }
-    // }, function (e) {
-    //   alert("Error submitting form!");
-    // });
   }
 
   parseMapByOldFlags(newMap) {
